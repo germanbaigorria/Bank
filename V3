@@ -1,0 +1,89 @@
+//SPDX-License-Identifier: MIT
+pragma solidity 0.8.26;
+
+contract mybankV3 {
+    //Estado del contrato addrss public owner;
+    
+    // Rgistro d usuarios y saldos para cada token
+    mapping(address => bool) public isRegistered;
+    mapping(address => uint256) public balanceTokenA;
+    mapping(address => uint256) public balanceTokenB;
+
+    //Paramtros para simulacion de interes
+    mapping(address => uint256) public lastInterestUpdate;
+    uint256 public interestRate = 5; //5% e interes por periodo
+    uint256 public interestPeriod = 30 days;
+
+    //Eventos para seguimiento de operaciones
+    event Registered(address indexed user);
+    event withdrawal(address indexed user, string token, uint256 amount);
+    event Transfer(address indexed from, address indexed to, string token, uint256 amount);
+    event InterestAccrued(address indexed user,uint256 interestAmount);
+
+    address public owner;
+  
+    //Modificadores de sguridad
+    modifier OnlyOwner() {
+        require(msg.sender ==owner,"solo el owner pude ejcutar esta funcion");
+        _;
+    }    
+    modifier onlyRegistered() {
+        require(isRegistered[msg.sender], "Usuario no registrado");
+        _;
+    }
+    //Constructor: Establece el owner del contrato
+    constructor(){
+        owner = msg.sender;
+    }
+
+    //Registro de usuario
+    function rgister() external {
+        require(!isRegistered[msg.sender], "Usuario ya registrado");
+        isRegistered[msg.sender] = true;
+        lastInterestUpdate[msg.sender] = block.timestamp; // Inicializa el calculo de intereses
+        emit Registered(msg.sender);
+    }
+
+    //Funciones de retiro para cada token
+    function withdrawTokenA(uint256 amount) external onlyRegistered {
+        require(balanceTokenA[msg.sender] >= amount, "saldo insuficiente en Token A");
+        balanceTokenA[msg.sender] -= amount;
+        emit withdrawal(msg.sender, "Token A", amount);
+    }
+    function withDrawTokenB(uint256 amount) external onlyRegistered {
+        require(balanceTokenB[msg.sender] >= amount, "saldo insuficiente en Token B");
+        balanceTokenB[msg.sender] -= amount;
+        emit withdrawal(msg.sender, "Token B", amount);
+    }
+
+    //Funcion para transferir Token A entre usuarios registrados
+    function transferTokenAToFriend( address friend, uint256 amount) external onlyRegistered {
+        require(isRegistered[friend], "El destinatario no esta registrado");
+        require(balanceTokenA[msg.sender] >= amount, "Saldo insuficiente de Token A");
+
+        balanceTokenA[msg.sender] -= amount;
+        balanceTokenA[friend] += amount;
+
+        emit Transfer(msg.sender, friend, "Token A", amount);
+    }
+
+    // Funcion para actualizar y acumular intereses en el saldo de Token A
+    function updateInterest() external onlyRegistered {
+        uint256 timeElapsed = block.timestamp - lastInterestUpdate[msg.sender];
+        require(timeElapsed >= interestPeriod, "No ha transcurrido el periodo minimo para intereses");
+
+    // Calcula cuantos periodos completos han pasado
+    uint256 periods = timeElapsed / interestPeriod;
+    uint256 interest = (balanceTokenA[msg.sender] * interestRate * periods) / 100;
+
+    balanceTokenA[msg.sender] += interest;
+    lastInterestUpdate[msg.sender] = block.timestamp;
+
+    emit InterestAccrued(msg.sender, interest);
+    }
+
+    //Funciones administrativas para ajustar parametros (solo owner)
+    function setIntrestRate(uint256 newRate) external OnlyOwner {
+        interestRate = newRate;
+        }
+    }
