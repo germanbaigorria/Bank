@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 contract mybankV3 {
     //Estado del contrato addrss public owner;
     
-    // Rgistro d usuarios y saldos para cada token
+    // Registro d usuarios y saldos para cada token
     mapping(address => bool) public isRegistered;
     mapping(address => uint256) public balanceTokenA;
     mapping(address => uint256) public balanceTokenB;
@@ -37,7 +37,7 @@ contract mybankV3 {
     }
 
     //Registro de usuario
-    function rgister() external {
+    function register() external {
         require(!isRegistered[msg.sender], "Usuario ya registrado");
         isRegistered[msg.sender] = true;
         lastInterestUpdate[msg.sender] = block.timestamp; // Inicializa el calculo de intereses
